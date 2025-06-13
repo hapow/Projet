@@ -112,6 +112,60 @@ class VulnerableApp:
         token = base64.b64encode(json.dumps(payload).encode()).decode()
         return token
 
+    def search_user(self, username):
+        """Recherche utilisateur vulnérable aux injections SQL"""
+        # VULNÉRABILITÉ 8: Injection SQL - Concaténation directe de chaînes
+        query = f"SELECT * FROM users WHERE username = '{username}'"
+        
+        print(f"🔍 Recherche utilisateur: {username}")
+        print(f"🗄️  Requête SQL générée: {query}")
+        print("⚠️  VULNÉRABLE AUX INJECTIONS SQL !")
+        
+        # Simulation de résultats
+        if "'" in username or "OR" in username.upper() or "UNION" in username.upper():
+            print("🚨 INJECTION SQL DÉTECTÉE dans la requête !")
+            print("💀 Requête malveillante exécutée - accès non autorisé possible")
+            return {"status": "compromised", "data": "Tous les utilisateurs retournés"}
+        else:
+            return {"status": "success", "user": username}
+
+    def get_user_orders(self, user_id):
+        """Récupération des commandes utilisateur - vulnérable SQL injection"""
+        # VULNÉRABILITÉ 9: Injection SQL via paramètre numérique
+        query = f"SELECT order_id, amount, date FROM orders WHERE user_id = {user_id} ORDER BY date DESC"
+        
+        print(f"📦 Récupération commandes pour utilisateur ID: {user_id}")
+        print(f"🗄️  Requête: {query}")
+        print("⚠️  Paramètre non validé - injection SQL possible !")
+        
+        # Détection d'injection
+        user_id_str = str(user_id)
+        if any(keyword in user_id_str.upper() for keyword in ["UNION", "SELECT", "DROP", "DELETE", "--"]):
+            print("🚨 TENTATIVE D'INJECTION SQL DÉTECTÉE !")
+            print("💀 Requête potentiellement malveillante exécutée")
+            return {"status": "compromised", "warning": "Injection SQL réussie"}
+        
+        return {"status": "success", "orders": [{"id": 1, "amount": 99.99}]}
+
+    def login_user(self, username, password):
+        """Connexion utilisateur vulnérable aux injections SQL"""
+        # VULNÉRABILITÉ 10: Injection SQL dans l'authentification
+        query = f"SELECT id, role FROM users WHERE username = '{username}' AND password = '{password}'"
+        
+        print(f"🔐 Tentative de connexion: {username}")
+        print(f"🗄️  Requête d'authentification: {query}")
+        print("⚠️  Authentification vulnérable aux injections SQL !")
+        
+        # Simulation d'injection SQL classique
+        if "' OR '1'='1" in username or "' OR '1'='1" in password:
+            print("🚨 INJECTION SQL RÉUSSIE - AUTHENTIFICATION CONTOURNÉE !")
+            print("💀 Accès administrateur obtenu illégalement")
+            return {"status": "compromised", "role": "admin", "message": "Injection réussie"}
+        elif username == "admin" and password == self.admin_password:
+            return {"status": "success", "role": "admin"}
+        else:
+            return {"status": "failed"}
+
     def run_demo(self):
         """Démonstration des vulnérabilités"""
         print("\n" + "="*50)
@@ -143,6 +197,24 @@ class VulnerableApp:
         token = self.generate_jwt_token("user123")
         print(f"Token généré: {token}")
         
+        # Test de recherche utilisateur (injection SQL)
+        print("\n7. Recherche utilisateur (vulnérable):")
+        self.search_user("john")
+        print("\n   Test avec injection SQL:")
+        self.search_user("' OR '1'='1' --")
+        
+        # Test de récupération commandes (injection SQL)
+        print("\n8. Récupération commandes:")
+        self.get_user_orders(123)
+        print("\n   Test avec injection SQL:")
+        self.get_user_orders("123 UNION SELECT username, password, 'admin' FROM users --")
+        
+        # Test de connexion vulnérable
+        print("\n9. Connexion utilisateur vulnérable:")
+        self.login_user("user", "password")
+        print("\n   Test avec injection SQL:")
+        self.login_user("admin' OR '1'='1' --", "anything")
+        
         print("\n" + "="*50)
         print("⚠️  RÉSUMÉ DES VULNÉRABILITÉS DÉTECTÉES:")
         print("="*50)
@@ -153,7 +225,8 @@ class VulnerableApp:
         print("🔴 Tokens d'accès cloud exposés")
         print("🔴 Secrets JWT hardcodés")
         print("🔴 Logs contenant des informations sensibles")
-        print("\n💡 Utilisez des variables d'environnement ou des gestionnaires de secrets !")
+        print("🔴 Injections SQL (recherche, commandes, authentification)")
+        print("\n💡 Utilisez des requêtes préparées et des variables d'environnement !")
 
 if __name__ == "__main__":
     # VULNÉRABILITÉ 7: Configuration en dur
